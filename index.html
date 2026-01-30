@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="แอปบันทึกรายรับรายจ่าย - ติดตามการเงินของคุณอย่างง่ายดาย">
+    <title>บันทึกรายรับ-รายจ่าย | Money Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, remove, onValue } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXYny2edOXoayfVZtfOdU1H_ULLu1VAzY",
+            authDomain: "godconfirmed-643e1.firebaseapp.com",
+            databaseURL: "https://godconfirmed-643e1-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "godconfirmed-643e1",
+            storageBucket: "godconfirmed-643e1.firebasestorage.app",
+            messagingSenderId: "205783563777",
+            appId: "1:205783563777:web:b6a2918334fe7fbee9ca00",
+            measurementId: "G-KHQHNBLMWL"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase available globally
+        window.firebaseDB = {
+            database,
+            ref,
+            push,
+            set,
+            remove,
+            onValue
+        };
+
+        // Dispatch event when Firebase is ready
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">💰</span>
+                    <h1>Money Tracker</h1>
+                </div>
+                <div class="date-display" id="currentDate"></div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Balance Card -->
+            <section class="balance-card">
+                <div class="balance-header">
+                    <span class="balance-label">ยอดคงเหลือ</span>
+                    <span class="balance-badge">THB</span>
+                </div>
+                <div class="balance-amount" id="balance">฿0.00</div>
+                <div class="balance-stats">
+                    <div class="stat income">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-info">
+                            <span class="stat-label">รายรับ</span>
+                            <span class="stat-value" id="totalIncome">฿0.00</span>
+                        </div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat expense">
+                        <div class="stat-icon">📉</div>
+                        <div class="stat-info">
+                            <span class="stat-label">รายจ่าย</span>
+                            <span class="stat-value" id="totalExpense">฿0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Add Transaction Form -->
+            <section class="form-section">
+                <h2 class="section-title">
+                    <span class="title-icon">✨</span>
+                    เพิ่มรายการใหม่
+                </h2>
+                <form class="transaction-form" id="transactionForm">
+                    <div class="form-group">
+                        <label for="description">รายละเอียด</label>
+                        <input type="text" id="description" placeholder="เช่น เงินเดือน, ค่าอาหาร..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">จำนวนเงิน (บาท)</label>
+                        <input type="number" id="amount" placeholder="0.00" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">หมวดหมู่</label>
+                        <select id="category" required>
+                            <option value="">เลือกหมวดหมู่</option>
+                            <optgroup label="รายรับ">
+                                <option value="salary">💼 เงินเดือน</option>
+                                <option value="bonus">🎁 โบนัส</option>
+                                <option value="investment">📊 ลงทุน</option>
+                                <option value="other-income">💵 รายรับอื่นๆ</option>
+                            </optgroup>
+                            <optgroup label="รายจ่าย">
+                                <option value="food">🍜 อาหาร</option>
+                                <option value="transport">🚗 เดินทาง</option>
+                                <option value="shopping">🛍️ ช้อปปิ้ง</option>
+                                <option value="bills">📄 ค่าบริการ</option>
+                                <option value="entertainment">🎮 ความบันเทิง</option>
+                                <option value="health">🏥 สุขภาพ</option>
+                                <option value="other-expense">💸 รายจ่ายอื่นๆ</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group type-selector">
+                        <label>ประเภท</label>
+                        <div class="type-buttons">
+                            <button type="button" class="type-btn income active" data-type="income">
+                                <span class="btn-icon">➕</span>
+                                รายรับ
+                            </button>
+                            <button type="button" class="type-btn expense" data-type="expense">
+                                <span class="btn-icon">➖</span>
+                                รายจ่าย
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-icon">💾</span>
+                        บันทึกรายการ
+                    </button>
+                </form>
+            </section>
+
+            <!-- Transaction History -->
+            <section class="history-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span class="title-icon">📋</span>
+                        ประวัติรายการ
+                    </h2>
+                    <button class="clear-btn" id="clearAll">
+                        <span>🗑️</span>
+                        ล้างทั้งหมด
+                    </button>
+                </div>
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Transactions will be inserted here -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-icon">📝</div>
+                        <p>ยังไม่มีรายการ</p>
+                        <span>เริ่มเพิ่มรายรับ-รายจ่ายของคุณ</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ❤️ | Money Tracker 2026</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
